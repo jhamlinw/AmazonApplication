@@ -1,115 +1,142 @@
-import { useEffect, useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { Routes, Route, NavLink, useNavigate } from 'react-router-dom'
+import { useCart } from './CartContext'
+import BooksPage from './pages/BooksPage'
+import CartPage from './pages/CartPage'
 
 function App() {
-  const [books, setBooks] = useState([])
-  const [pageSize, setPageSize] = useState(5)
-  const [pageNum, setPageNum] = useState(1)
-  const [sortOrder, setSortOrder] = useState('asc')
-  const [totalNumBooks, setTotalNumBooks] = useState(0)
+  const { cart, cartTotal, cartItemCount, removeFromCart } = useCart()
+  const [showOffcanvas, setShowOffcanvas] = useState(false)
+  const offcanvasRef = useRef(null)
+  const navigate = useNavigate()
 
   useEffect(() => {
-    const getBooks = async () => {
-      const response = await fetch(
-        `http://localhost:5295/Books?pageSize=${pageSize}&pageNum=${pageNum}&sortOrder=${sortOrder}`,
-      )
-      const data = await response.json()
-      setBooks(data.books)
-      setTotalNumBooks(data.totalNumBooks)
+    if (showOffcanvas) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
     }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [showOffcanvas])
 
-    getBooks()
-  }, [pageSize, pageNum, sortOrder])
-
-  const totalPages = Math.ceil(totalNumBooks / pageSize)
+  const goToCart = () => {
+    setShowOffcanvas(false)
+    navigate('/cart')
+  }
 
   return (
-    <div className="container py-4">
-      <h1 className="mb-4">Online Bookstore</h1>
-
-      <div className="row g-3 align-items-end mb-4">
-        <div className="col-sm-4">
-          <label className="form-label">Results per page</label>
-          <select
-            className="form-select"
-            value={pageSize}
-            onChange={(e) => {
-              setPageNum(1)
-              setPageSize(Number(e.target.value))
-            }}
+    <>
+      {/* Navbar */}
+      <nav className="navbar navbar-expand-lg navbar-dark bg-dark sticky-top shadow-sm">
+        <div className="container">
+          <NavLink className="navbar-brand fw-bold" to="/">
+            Amazon Bookstore
+          </NavLink>
+          <button
+            className="navbar-toggler"
+            type="button"
+            data-bs-toggle="collapse"
+            data-bs-target="#navbarNav"
           >
-            <option value={5}>5</option>
-            <option value={10}>10</option>
-            <option value={15}>15</option>
-          </select>
+            <span className="navbar-toggler-icon"></span>
+          </button>
+          <div className="collapse navbar-collapse" id="navbarNav">
+            <ul className="navbar-nav me-auto">
+              <li className="nav-item">
+                <NavLink className="nav-link" to="/">
+                  Books
+                </NavLink>
+              </li>
+              <li className="nav-item">
+                <NavLink className="nav-link" to="/cart">
+                  Cart
+                </NavLink>
+              </li>
+            </ul>
+            {/* Bootstrap Badge (#notcoveredinthevideos feature #1) */}
+            <button
+              className="btn btn-outline-light position-relative"
+              onClick={() => setShowOffcanvas(true)}
+            >
+              Cart
+              {cartItemCount > 0 && (
+                <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                  {cartItemCount}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
+      </nav>
 
-        <div className="col-sm-4">
-          <label className="form-label">Sort by title</label>
-          <select
-            className="form-select"
-            value={sortOrder}
-            onChange={(e) => {
-              setPageNum(1)
-              setSortOrder(e.target.value)
-            }}
-          >
-            <option value="asc">A to Z</option>
-            <option value="desc">Z to A</option>
-          </select>
+      {/* Bootstrap Offcanvas cart preview (#notcoveredinthevideos feature #2) */}
+      {showOffcanvas && (
+        <div
+          className="offcanvas-backdrop fade show"
+          onClick={() => setShowOffcanvas(false)}
+        ></div>
+      )}
+      <div
+        ref={offcanvasRef}
+        className={`offcanvas offcanvas-end${showOffcanvas ? ' show' : ''}`}
+        style={{ visibility: showOffcanvas ? 'visible' : 'hidden' }}
+        tabIndex="-1"
+      >
+        <div className="offcanvas-header">
+          <h5 className="offcanvas-title">Cart Preview</h5>
+          <button
+            type="button"
+            className="btn-close"
+            onClick={() => setShowOffcanvas(false)}
+          ></button>
+        </div>
+        <div className="offcanvas-body">
+          {cart.length === 0 ? (
+            <p className="text-muted">Your cart is empty.</p>
+          ) : (
+            <>
+              <ul className="list-group mb-3">
+                {cart.map((item) => (
+                  <li
+                    key={item.bookId}
+                    className="list-group-item d-flex justify-content-between align-items-start"
+                  >
+                    <div>
+                      <div className="fw-bold">{item.title}</div>
+                      <small className="text-muted">
+                        {item.quantity} &times; ${Number(item.price).toFixed(2)}
+                      </small>
+                    </div>
+                    <button
+                      className="btn btn-sm btn-outline-danger ms-2"
+                      onClick={() => removeFromCart(item.bookId)}
+                    >
+                      &times;
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <div className="fw-bold mb-3">
+                Total: ${cartTotal.toFixed(2)}
+              </div>
+              <button className="btn btn-primary w-100" onClick={goToCart}>
+                View Full Cart
+              </button>
+            </>
+          )}
         </div>
       </div>
 
-      <div className="table-responsive">
-        <table className="table table-striped table-bordered">
-          <thead className="table-dark">
-            <tr>
-              <th>Title</th>
-              <th>Author</th>
-              <th>Publisher</th>
-              <th>ISBN</th>
-              <th>Classification</th>
-              <th>Category</th>
-              <th>Pages</th>
-              <th>Price</th>
-            </tr>
-          </thead>
-          <tbody>
-            {books.map((book) => (
-              <tr key={book.bookId}>
-                <td>{book.title}</td>
-                <td>{book.author}</td>
-                <td>{book.publisher}</td>
-                <td>{book.isbn}</td>
-                <td>{book.classification}</td>
-                <td>{book.category}</td>
-                <td>{book.numberOfPages}</td>
-                <td>${Number(book.price).toFixed(2)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {/* Main content */}
+      <div className="container py-4">
+        <Routes>
+          <Route path="/" element={<BooksPage />} />
+          <Route path="/cart" element={<CartPage />} />
+        </Routes>
       </div>
-
-      <div className="d-flex gap-2 align-items-center mt-3">
-        <button
-          className="btn btn-outline-primary"
-          disabled={pageNum === 1}
-          onClick={() => setPageNum(pageNum - 1)}
-        >
-          Previous
-        </button>
-        <span>
-          Page {pageNum} of {totalPages || 1}
-        </span>
-        <button
-          className="btn btn-outline-primary"
-          disabled={pageNum >= totalPages}
-          onClick={() => setPageNum(pageNum + 1)}
-        >
-          Next
-        </button>
-      </div>
-    </div>
+    </>
   )
 }
 
