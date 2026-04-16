@@ -7,7 +7,8 @@ function CartPage() {
   const navigate = useNavigate()
 
   const handleContinueShopping = () => {
-    navigate('/')
+    const lastPage = sessionStorage.getItem('lastBooksPage')
+    navigate(lastPage || '/')
   }
 
   if (cart.length === 0) {

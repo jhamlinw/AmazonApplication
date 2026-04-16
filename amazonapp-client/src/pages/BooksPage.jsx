@@ -1,17 +1,29 @@
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { fetchBooks, fetchCategories } from '../api'
 import { useCart } from '../CartContext'
 
 function BooksPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
+
   const [books, setBooks] = useState([])
-  const [pageSize, setPageSize] = useState(5)
-  const [pageNum, setPageNum] = useState(1)
-  const [sortOrder, setSortOrder] = useState('asc')
+  const [pageSize, setPageSize] = useState(
+    Number(searchParams.get('pageSize')) || 5
+  )
+  const [pageNum, setPageNum] = useState(
+    Number(searchParams.get('pageNum')) || 1
+  )
+  const [sortOrder, setSortOrder] = useState(
+    searchParams.get('sortOrder') || 'asc'
+  )
   const [totalNumBooks, setTotalNumBooks] = useState(0)
   const [loading, setLoading] = useState(true)
 
   const [allCategories, setAllCategories] = useState([])
-  const [selectedCategories, setSelectedCategories] = useState([])
+  const [selectedCategories, setSelectedCategories] = useState(() => {
+    const cats = searchParams.getAll('categories')
+    return cats.length > 0 ? cats : []
+  })
 
   const [toastMessage, setToastMessage] = useState('')
   const [showToast, setShowToast] = useState(false)
@@ -23,6 +35,15 @@ function BooksPage() {
       .then(setAllCategories)
       .catch((err) => console.error(err))
   }, [])
+
+  useEffect(() => {
+    const params = { pageSize: pageSize.toString(), pageNum: pageNum.toString(), sortOrder }
+    const sp = new URLSearchParams(params)
+    selectedCategories.forEach((cat) => sp.append('categories', cat))
+    setSearchParams(sp, { replace: true })
+
+    sessionStorage.setItem('lastBooksPage', `/?${sp.toString()}`)
+  }, [pageSize, pageNum, sortOrder, selectedCategories])
 
   useEffect(() => {
     setLoading(true)
